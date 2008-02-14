@@ -12,9 +12,10 @@ source $TOP_DIR/.config
 source $TOP_DIR/functions/Platforms
 
 if [ "$NATIVE_COMPILATION" = "y" ]
-then export arch_conf="Native"
-else export arch_conf=`get_chosen_arch`
+then exit 0
 fi
+
+export arch_conf=`get_chosen_arch`
 
 source $goboSettings/Compile/Cross/Cross-$arch_conf.conf
 dir_name="$cross_prefix_dir"

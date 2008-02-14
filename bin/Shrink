@@ -8,10 +8,10 @@ source $TOPDIR/.config
 source $TOPDIR/functions/Platforms
 
 if [ "$NATIVE_COMPILATION" = "y" ]
-then export arch_conf="Native"
-else export arch_conf=`get_chosen_arch`
+then exit 0
 fi
 
+export arch_conf=`get_chosen_arch`
 source $goboSettings/Compile/Cross/Cross-$arch_conf.conf
 prefix="$cross_prefix_dir"
 
@@ -23,6 +23,7 @@ unset STRIP_OPT
 if [ "$SHRINK_STRIP_ALL" ]
 then export STRIP_OPT="--strip-all"
 fi
+
 if [ "$SHRINK_STRIP_UNNEEDED" ]
 then export STRIP_OPT="--strip-unneeded"
 fi
