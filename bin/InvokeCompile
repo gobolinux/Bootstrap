@@ -105,15 +105,16 @@ trap cleanup TERM INT STOP HUP EXIT
 [ "$CC" = "" ] && CC=gcc
 [ "$LD" = "" ] && LD=ld
 
+if [ "$NATIVE_COMPILATION" = "y" ]
+then exit 0
+fi
+
+export arch_conf=`get_chosen_arch`
+
 verbose_build=$1
 if [ "$verbose_build" = "1" ]
 then Log_Terse "Verbose build enabled"
 else Log_Terse "Verbose build disabled"
-fi
-
-if [ "$NATIVE_COMPILATION" = "y" ]
-then export arch_conf="Native"
-else export arch_conf=`get_chosen_arch`
 fi
 
 # this is the same as evaluating the line 'export cross_prefix_dir=...'

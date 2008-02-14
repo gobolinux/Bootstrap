@@ -15,6 +15,123 @@ dirname="$goboPrograms/ChrootCompile"
 [ ! -d "$dirname" ] && Die "Please install ChrootCompile first"
 
 #
+# If performing a native compilation, compile the base dependencies
+# before attempting to invoke ChrootCompile.
+#
+if [ "$NATIVE_COMPILATION" ]
+then
+    arch=`get_native_arch`
+    chrootdir=$PWD/$TOP_DIR/chroot
+    basedir=$chrootdir/BaseDependencies
+    unpackeddir=$chrootdir/Unpacked/$arch
+    mkdir -p $unpackeddir
+    mkdir -p $chrootdir/BaseDependencies
+
+    if [ ! -d "$unpackeddir/Glibc" ]
+    then
+        # mawk is not capable of bootstrapping Glibc
+        if which awk | grep -q mawk
+        then
+            Die "Please install the gawk package in your running system before proceeding."
+        fi
+    fi
+
+    if [ ! -d /Programs ]
+    then
+        # Applications will look for dependencies at compile time under /Programs.
+        # So, at least while we compile the base dependencies, all the deps must be
+        # there.
+        Ask "Before starting the bootstrap, a directory named /Programs must be created. Ok to proceed?" || exit 1
+        mkdir /Programs || Die "Cannot continue."
+    fi
+
+    function Compile_Base() {
+        package="$1"
+
+        # Compile package with standard prefixes.
+        # Please note that GenBuildInformation will not work, as rootless will try
+        # to process the package in $goboPrograms, which can differ from /Programs.
+
+        # Make sure that everything is linked against our fresh packages.
+        ld_library_path=$LD_LIBRARY_PATH
+        for entry in /Programs/*
+        do
+            if [ -d "$i/Current/lib" ]
+            then ld_library_path="`readlink -f $i/Current/lib`:$ld_library_path"
+            fi
+        done
+
+        export goboInstall=/Programs
+        export goboRuntimePicture=/Programs
+        LD_LIBRARY_PATH=$ld_library_path Compile --no-sign --no-symlink --no-dependencies $package
+        if [ $? != 0 ]
+        then
+            rm -rf $unpackeddir/$package
+            Die "Cannot continue."
+        fi
+
+        # Install package inside Bootstrap's domain
+        #export goboInstall=$goboPrograms
+        #export goboRuntimePicture=$goboPrograms
+        #Compile --no-web --no-symlink --no-sign --no-dependencies $package || { rm -rf $unpackeddir/$package; Die "Cannot continue."; }
+
+        # Create a binary package and store it in BaseDependencies
+        Quiet pushd /Programs
+        version=`ls $package | grep -v "Settings\|Variable\|Current"`
+        tar cjf $basedir/${package}--${version}--${arch}.tar.bz2 $package/$version
+        mkdir -p $unpackeddir/$package
+        cp -a $package/$version $unpackeddir/$package
+        Quiet popd
+    }
+
+    # borrowed from ChrootCompile
+    base_dependencies=(
+        "Linux-Headers" # needed to bootstrap Glibc
+        "Gawk"       # needed by Compile and to bootstrap Glibc
+        "Glibc"
+        "Ncurses"    # needed by Bash
+        "Readline"   # needed by Bash
+        "Bash"
+        "CoreUtils"  # needed by Scripts (cp...)
+        "Sed"        # needed by Scripts
+        "PCRE"       # needed by Grep
+        "Grep"       # needed by Scripts
+        "Python"     # needed by Scripts
+        "FindUtils"  # needed by Compile (find)
+        "DB"         # needed by Perl on 013
+        "Bzip2"      # needed by Atool
+        "Gzip"       # needed by Atool
+        "Tar"        # needed by Atool
+        "Unzip"      # needed by Atool
+        "Perl"       # needed by Atool
+        "Atool"      # needed by Compile
+        "ZLib"       # needed by File
+        "File"       # needed by Scripts
+        "MkTemp"     # needed by Scripts
+        "Mtail"      # needed by Scripts
+        "BinUtils"   # needed by GCC (as)
+        "GCC"
+        "Sudo"       # needed by Scripts
+        "Make"       # needed by Compile
+        "Patch"      # needed by Compile
+        "E2FSProgs"  # needed by Util-Linux (libblkid.so)
+        "Util-Linux" # needed by Compile (mount)
+        "DiffUtils"  # needed by Compile (diff)
+        "Texinfo"    # needed by packages that generate info pages (makeinfo)
+        "Scripts"
+        "Compile"
+    )
+
+    Log_Normal "Ensuring that base dependencies are already compiled"
+    for package in ${base_dependencies[@]}
+    do
+        [ -d $unpackeddir/$package ] && Log_Normal "Cached: $(readlink -f $unpackeddir/$package)" && continue
+        Compile_Base "$package"
+    done
+    exit 0
+fi
+
+#
 # Create the chroot environment
 #
 got_glibc=`ls $TOP_DIR/chroot/BaseDependencies/Glibc--* 2> /dev/null`
