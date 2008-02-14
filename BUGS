@@ -75,3 +75,32 @@ Swfdec
 TiMidity++
 Tremor
 UClibc
+
+# Bootstrapping GoboLinux on Ubuntu:
+
+If you get this error when compiling Glibc:
+
+/home/lucasvr/Files/Compile/Sources/glibc-2.7/_build/elf/librtld.os: In function `process_dl_debug':
+/home/lucasvr/Files/Compile/Sources/glibc-2.7/elf/rtld.c:2436: undefined reference to `__stack_chk_fail_local'
+/home/lucasvr/Files/Compile/Sources/glibc-2.7/_build/elf/librtld.os: In function `process_envvars':
+/home/lucasvr/Files/Compile/Sources/glibc-2.7/elf/rtld.c:2695: undefined reference to `__stack_chk_fail_local'
+/home/lucasvr/Files/Compile/Sources/glibc-2.7/_build/elf/librtld.os: In function `dl_main':
+/home/lucasvr/Files/Compile/Sources/glibc-2.7/elf/rtld.c:2316: undefined reference to `__stack_chk_fail_local'
+/home/lucasvr/Files/Compile/Sources/glibc-2.7/_build/elf/librtld.os: In function `print_search_path':
+/home/lucasvr/Files/Compile/Sources/glibc-2.7/elf/dl-load.c:1568: undefined reference to `__stack_chk_fail_local'
+/home/lucasvr/Files/Compile/Sources/glibc-2.7/_build/elf/librtld.os: In function `open_verify':
+/home/lucasvr/Files/Compile/Sources/glibc-2.7/elf/dl-load.c:1805: undefined reference to `__stack_chk_fail_local'
+/home/lucasvr/Files/Compile/Sources/glibc-2.7/_build/elf/librtld.os:/home/lucasvr/Files/Compile/Sources/glibc-2.7/elf/dl-load.c:1960: more undefined references to `__stack_chk_fail_local' follow
+collect2: ld returned 1 exit status
+make[3]: *** [/home/lucasvr/Files/Compile/Sources/glibc-2.7/_build/elf/ld.so] Error 1
+make[3]: Leaving directory `/home/lucasvr/Files/Compile/Sources/glibc-2.7/elf'
+make[2]: *** [elf/subdir_lib] Error 2
+make[2]: Leaving directory `/home/lucasvr/Files/Compile/Sources/glibc-2.7'
+make[1]: *** [all] Error 2
+make[1]: Leaving directory `/home/lucasvr/Files/Compile/Sources/glibc-2.7/_build'
+
+Then you will need to disable libssp. You can do that by creating a wrapper around /usr/bin/gcc, such as:
+  #!/bin/sh
+  /usr/bin/gcc-4.2 -fno-stack-protector "$@"
+
+Also, please note that you *need* Gawk. Mawk can't be used to compile Glibc.
